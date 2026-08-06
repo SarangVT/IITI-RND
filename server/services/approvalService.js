@@ -7,27 +7,46 @@ import { createHodApprovalEmailHtml } from "../controllers/mailController/html/h
 import { createDeanNotificationEmailHtml } from "../controllers/mailController/html/deanTemplates.js";
 import { createSubmitterUpdateEmail } from "../controllers/mailController/html/SubmitterUpdateEmail.js";
 
-const isProd = process.env.NODE_ENV === "PROD" || process.env.NODE_ENV === "production";
+const isProd = process.env.NODE_ENV === "PROD";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: isProd ? 465 : 587,
-  secure: isProd,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.RND_EMAIL,
     pass: process.env.RND_APP_PASSWD,
   },
-  ...(isProd && { family: 4 })
 });
 
-export default transporter;
+async function dispatchEmail(to, subject, html) {
+  if (isProd) {
+    if (!process.env.GOOGLE_MAIL_WEBHOOK) {
+      throw new Error("Missing GOOGLE_MAIL_WEBHOOK in Render environment variables");
+    }
+    const response = await fetch(process.env.GOOGLE_MAIL_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to, subject, html }),
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error("Google Webhook Failed: " + result.error);
+  } else {
+    await transporter.sendMail({
+      from: `"Rnd Department" <${process.env.RND_EMAIL}>`,
+      to,
+      subject,
+      html,
+    });
+  }
+}
 
 export const ApprovalService = {
   async createWorkflow(stepType) {
     return await prisma.approvalWorkflow.create({
       data: {
         stepType,
-        status: "PENDING", // FIXED: Matches your Prisma Enum
+        status: "PENDING",
       },
     });
   },
@@ -67,7 +86,6 @@ export const ApprovalService = {
       throw new Error("Invalid workflow context or missing HOD email");
     }
 
-    // 1. Create action tokens first (needed for the email)
     const acceptToken = await this.createToken(approvalId, "ACCEPT");
     const rejectToken = await this.createToken(approvalId, "REJECT");
 
@@ -75,21 +93,17 @@ export const ApprovalService = {
     const rejectLink = `${server}/api/mail/hod/decision?token=${rejectToken}`;
     const committee = context.isStaff ? context.form.selectionCommittee || {} : {};
 
-    // 2. ATTEMPT TO SEND THE EMAIL FIRST!
     try {
-      await transporter.sendMail({
-        from: `"Rnd Department" <${process.env.RND_EMAIL}>`,
-        to: context.project.hodEmail,
-        subject: `Approval Required [${context.workflow.stepType}]: ${context.project.title}`,
-        html: createHodApprovalEmailHtml(context.project, committee, acceptLink, rejectLink),
-      });
+      await dispatchEmail(
+        context.project.hodEmail,
+        `Approval Required [${context.workflow.stepType}]: ${context.project.title}`,
+        createHodApprovalEmailHtml(context.project, committee, acceptLink, rejectLink)
+      );
     } catch (mailError) {
       console.error("Mail Dispatch Failed:", mailError);
-      // Throwing this error STOPS the database from updating to PENDING_HOD
-      throw new Error("Failed to send email to HOD. Submission aborted."); 
+      throw new Error("Failed to send email to HOD. Submission aborted.");
     }
 
-    // 3. ONLY if email succeeds, update the database to PENDING_HOD
     await prisma.approvalWorkflow.update({
       where: { id: approvalId },
       data: { status: "PENDING_HOD", submittedAt: new Date() },
@@ -122,12 +136,11 @@ export const ApprovalService = {
         data: { projectId: context.project.id, projectRoleId: context.role.id, approvalWorkflowId: approvalId, action: "REJECTED_HOD", comment },
       });
 
-      await transporter.sendMail({
-        from: `"Rnd Department" <${process.env.RND_EMAIL}>`,
-        to: context.project.userEmail,
-        subject: `Changes Requested by HOD: ${context.project.title}`,
-        html: createSubmitterUpdateEmail(context.project, "REJECTED", comment),
-      });
+      await dispatchEmail(
+        context.project.userEmail,
+        `Changes Requested by HOD: ${context.project.title}`,
+        createSubmitterUpdateEmail(context.project, "REJECTED", comment)
+      );
 
       return { success: true, status: "REJECTED_HOD" };
     }
@@ -146,15 +159,13 @@ export const ApprovalService = {
       const rejectToken = await this.createToken(approvalId, "REJECT");
       const acceptLink = `${server}/api/mail/dean/decision?token=${acceptToken}`;
       const rejectLink = `${server}/api/mail/dean/decision?token=${rejectToken}`;
-
       const committee = context.isStaff ? context.form.selectionCommittee || {} : {};
 
-      await transporter.sendMail({
-        from: `"Rnd Department" <${process.env.RND_EMAIL}>`,
-        to: process.env.DEAN_EMAIL,
-        subject: `Final Approval Required: ${context.project.title}`,
-        html: createDeanNotificationEmailHtml(context.project, committee, acceptLink, rejectLink),
-      });
+      await dispatchEmail(
+        process.env.DEAN_EMAIL,
+        `Final Approval Required: ${context.project.title}`,
+        createDeanNotificationEmailHtml(context.project, committee, acceptLink, rejectLink)
+      );
 
       return { success: true, status: "PENDING_DEAN" };
     }
@@ -176,12 +187,11 @@ export const ApprovalService = {
       data: { projectId: context.project.id, projectRoleId: context.role.id, approvalWorkflowId: approvalId, action: status, comment: comment || "Dean granted final approval." },
     });
 
-    await transporter.sendMail({
-      from: `"Rnd Department" <${process.env.RND_EMAIL}>`,
-      to: context.project.userEmail,
-      subject: `Project Step ${action === "ACCEPT" ? "Approved" : "Rejected"}: ${context.project.title}`,
-      html: createSubmitterUpdateEmail(context.project, status, comment),
-    });
+    await dispatchEmail(
+      context.project.userEmail,
+      `Project Step ${action === "ACCEPT" ? "Approved" : "Rejected"}: ${context.project.title}`,
+      createSubmitterUpdateEmail(context.project, status, comment)
+    );
 
     return { success: true, status };
   },
@@ -192,7 +202,7 @@ export const ApprovalService = {
 
     await prisma.approvalWorkflow.update({
       where: { id: approvalId },
-      data: { status: "PENDING", hodRemark: null, deanRemark: null }, // FIXED
+      data: { status: "PENDING", hodRemark: null, deanRemark: null },
     });
 
     await prisma.decisionToken.deleteMany({ where: { projId: approvalId } });
