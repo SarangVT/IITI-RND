@@ -7,8 +7,6 @@ import { createHodApprovalEmailHtml } from "../controllers/mailController/html/h
 import { createDeanNotificationEmailHtml } from "../controllers/mailController/html/deanTemplates.js";
 import { createSubmitterUpdateEmail } from "../controllers/mailController/html/SubmitterUpdateEmail.js";
 
-import nodemailer from "nodemailer";
-
 const isProd = process.env.NODE_ENV === "PROD" || process.env.NODE_ENV === "production";
 
 const transporter = nodemailer.createTransport({
