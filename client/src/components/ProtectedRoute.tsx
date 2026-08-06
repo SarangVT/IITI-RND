@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Navigate } from "react-router-dom"
-import { api, apiLink } from "../lib/api"
+import { apiLink } from "../lib/api"
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const [loading, setLoading] = useState(true)

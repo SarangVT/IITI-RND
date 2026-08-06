@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
-import { api, apiLink } from "../lib/api"
+import { apiLink } from "../lib/api"
 
 const Navbar = () => {
   const navigate = useNavigate()
