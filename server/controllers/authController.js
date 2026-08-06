@@ -55,11 +55,11 @@ router.get("/google/callback", async (req, res) => {
   const email = payload.email
 
   if (!email.endsWith("@iiti.ac.in")) return res.status(403).send("Use institute email only")
-
+    const now = new Date();
   const user = await prisma.user.upsert({
     where: { email },
-    update: { name: payload.name || "Unnamed", lastVisit: new Date() },
-    create: { email, name: payload.name || "Unnamed" }
+    update: { name: payload.name || "Unnamed", lastVisit: now },
+    create: { email, name: payload.name || "Unnamed", lastVisit: now }
   })
 
   const jwtToken = jwt.sign({ id: user.id, email: user.email, name: user.name }, process.env.JWT_SECRET, { expiresIn: "7d" })
