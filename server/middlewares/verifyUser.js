@@ -9,7 +9,7 @@ export default (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     req.user = decoded
-    console.log("verified user: ", decoded)
+    // console.log("verified user: ", decoded)
     next()
   } catch {
     res.status(401).json({ error: "Invalid token" })

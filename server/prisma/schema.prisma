@@ -6,106 +6,126 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model ApprovalWorkflow {
+  id            String         @id @default(uuid())
+  status        ApprovalStatus @default(PENDING)  
+  hodRemark     String?
+  deanRemark    String?  
+  submittedAt   DateTime?
+  hodActedAt    DateTime?
+  deanActedAt   DateTime?  
+  // What type of form is this attached to? (Useful for routing emails/UI)
+  stepType      String         // e.g., "STAFF_RECRUITMENT", "RECRUITMENT_VACANCY"
+  // Reverse relations to the forms that might own this workflow
+  staffForm     StaffRecruitmentForm?
+  vacancyForm   RecruitmentVacancy?
+  // Logs specific to this specific approval chain
+  logs          ProjectLog[]
+}
+
+enum ApprovalStatus {
+  PENDING
+  PENDING_HOD
+  CONFIRMED_HOD
+  REJECTED_HOD
+  PENDING_DEAN
+  REJECTED_DEAN
+  APPROVED
+}
+
 model User {
-  id         String   @id @default(uuid())
-  name       String
-  email      String   @unique
-  lastVisit  DateTime?
-  projects   Project[]
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  lastVisit DateTime?
+  projects  Project[]
 }
 
 model Admin {
-  id    String   @id @default(uuid())
-  name  String
-  email String   @unique
+  id       String    @id @default(uuid())
+  name     String
+  email    String    @unique
   projects Project[]
 }
 
+model SuperAdmin {
+  id    String @id @default(uuid())
+  name  String
+  email String @unique
+}
+
 model Project {
-  id              String @id   @default(dbgenerated("gen_random_uuid()"))
+  id              String   @id @default(dbgenerated("gen_random_uuid()"))
   userEmail       String
   title           String
   fundingAgency   String
   projectDuration String
   hodEmail        String
-  hodRemark      String?
-  deanRemark     String?
-  status          ProjectStatus @default(SAVED)
-  user            User @relation(fields: [userEmail], references: [email])
-  forms           StaffRecruitmentForm[]
-  logs            ProjectLog[]
+  user            User     @relation(fields: [userEmail], references: [email])
   adminEmail      String
-  admin           Admin @relation(fields: [adminEmail], references: [email])
-  vacancies       RecruitmentVacancy[]
+  admin           Admin    @relation(fields: [adminEmail], references: [email])
+  roles           ProjectRole[]
+  logs            ProjectLog[]
+}
+
+model ProjectRole {
+  id                   String                @id @default(uuid())
+  projectId            String
+  roleName             String                // e.g., "JRF", "SRF"
+  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staffRecruitmentForm StaffRecruitmentForm?
+  recruitmentVacancy   RecruitmentVacancy?
+  logs                 ProjectLog[]
 }
 
 model StaffRecruitmentForm {
   id                 String      @id @default(uuid())
-  projectId          String?
-  selectionCommittee Json
-  status             FormStatus  @default(SAVED)
-  submittedAt        DateTime    @default(now())
-  approvedAt         DateTime?
-  project Project? @relation(fields: [projectId], references: [id])
+  projectRoleId      String      @unique
+  selectionCommittee Json  
+  approvalId         String      @unique
+  approval           ApprovalWorkflow @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  projectRole        ProjectRole @relation(fields: [projectRoleId], references: [id], onDelete: Cascade)
 }
 
 model RecruitmentVacancy {
-  id          String   @id @default(cuid())
-  position    String   // e.g., "Junior Research Fellow (JRF)"
-  count       Int      @default(1)
-  basicSalary Float   
-  hraPercent  Float    
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String      @id @default(cuid())
+  projectRoleId String      @unique
+  position      String      
+  count         Int         @default(1)
+  basicSalary   Float
+  hraPercent    Float
+  adPdfUrl      String?     
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  approvalId    String      @unique
+  approval      ApprovalWorkflow @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  projectRole   ProjectRole @relation(fields: [projectRoleId], references: [id], onDelete: Cascade)
 }
 
 model ProjectLog {
-  id        String   @id @default(uuid())
-  projectId String
-  action    String   // e.g., "REJECTED_HOD", "REJECTED_DEAN"
-  timestamp DateTime @default(now())
-  comment   String?
-  project   Project  @relation(fields: [projectId], references: [id])
-}
-
-enum FormStatus {
-  PENDING
-  SAVED
-  PENDING_HOD
-  REJECTED_HOD
-  CONFIRMED_HOD
-  PENDING_DEAN
-  REJECTED_DEAN
-  APPROVED
-}
-
-enum ProjectStatus {
-  PENDING
-  SAVED
-  PENDING_HOD
-  CONFIRMED_HOD
-  REJECTED_HOD
-  PENDING_DEAN
-  REJECTED_DEAN
-  APPROVED
-  RECRUITMENT_VACANCY
+  id                 String            @id @default(uuid())
+  projectId          String?
+  projectRoleId      String?      
+  approvalWorkflowId String?           
+  action             String            // e.g., "SUBMITTED", "REJECTED_HOD"
+  timestamp          DateTime          @default(now())
+  comment            String?
+  project            Project?          @relation(fields: [projectId], references: [id])
+  projectRole        ProjectRole?      @relation(fields: [projectRoleId], references: [id], onDelete: Cascade)
+  workflow           ApprovalWorkflow? @relation(fields: [approvalWorkflowId], references: [id], onDelete: Cascade)
 }
 
 model DepartmentAuthority {
-  id          String @id @default(uuid())
-  dept_name   String @unique
-  hod_email   String
-  // dean_email  String
+  id        String @id @default(uuid())
+  dept_name String @unique
+  hod_email String
 }
 
 model DecisionToken {
   id        String   @id @default(uuid())
   token     String   @unique
   projId    String
-  action    String   // "ACCEPT" | "REJECT"
+  action    String   
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
 }

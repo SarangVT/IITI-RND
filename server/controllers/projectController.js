@@ -1,353 +1,141 @@
-import express from "express";
-import jwt from "jsonwebtoken";
-import prisma from "../db/prisma.js";
-const router = express.Router();
+import { ProjectService } from "../services/projectService.js";
+import { ApprovalService } from "../services/approvalService.js";
 
-router.get("/all-projects", async (req, res) => {
-  const token = req.cookies.adKey;
-
-  if (!token)
-    return res.status(401).json({ success: false, message: "No token" });
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-  if (!decoded.id)
-    return res
-      .status(403)
-      .json({ success: false, message: "Access denied. Admins only." });
-
+export const getAllProjects = async (req, res) => {
   try {
-    const projects = await prisma.project.findMany({
-      include: { forms: false, user: true },
-    });
-    res.json({ success: true, projects: projects });
+    const projects = await ProjectService.getAllProjects();
+    res.json({ success: true, projects });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Server error" });
   }
-})
+};
 
-router.get("/user-projects", async (req, res) => {
-  const token = req.cookies.acKey;
-  if (!token)
-    return res.status(401).json({ success: false, message: "No token" });
-
+export const getUserProjects = async (req, res) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const projects = await prisma.project.findMany({
-      where: { userEmail: decoded.email },
-      include: { forms: true },
-    });
+    const projects = await ProjectService.getUserProjects(req.user.email);
     res.json({ success: true, projects });
   } catch (err) {
     console.error(err);
-    res.status(403).json({ success: false, message: "Invalid token" });
-  }
-});
-
-const verifyUser = (req, res, next) => {
-  const token = req.cookies.acKey;
-  if (!token)
-    return res.status(401).json({ success: false, message: "No token" });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(403).json({ success: false, message: "Invalid token" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-router.get("/:id", async (req, res) => {
-  const userEmail = req.user.email;
-  if (!userEmail) return res.status(403).json({ message: "Unauthorized" });
-  const { id } = req.params;
-
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: { user: true, logs: true },
-  });
-
-  if (!project || project.userEmail !== userEmail)
-    return res.status(403).json({ message: "Unauthorized" });
-  res.json(project);
-
-});
-
-router.post("/:id/staffRecruitmentForm", verifyUser, async (req, res) => {
+export const createProject = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { chair, members } = req.body;
-    const userEmail = req.user.email;
-
-    if (!chair || !Array.isArray(members))
-      return res.status(400).json({ message: "Chair + Members required" });
-
-    const project = await prisma.project.findUnique({ where: { id } });
-    if (!project || project.userEmail !== userEmail)
-      return res.status(403).json({ message: "Not allowed" });
-
-    const existing = await prisma.staffRecruitmentForm.findFirst({
-      where: { projectId: id }
-    });
-
-    if (existing) {
-      await prisma.staffRecruitmentForm.update({
-        where: { id: existing.id },
-        data: {
-          selectionCommittee: { chair, members },
-          status: "SAVED"
-        }
-      });
-    } else {
-      await prisma.staffRecruitmentForm.create({
-        data: {
-          projectId: id,
-          selectionCommittee: { chair, members },
-          status: "SAVED"
-        }
-      });
-    }
-
-    // also sync project status
-    await prisma.project.update({
-      where: { id },
-      data: { status: "SAVED" }
-    });
-
-    res.json({ success: true, message: "Form saved" });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-
-router.post("/:id/recruitmentVacancies", verifyUser, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { vacancies } = req.body; 
-    const userEmail = req.user.email;
-
-    if (!Array.isArray(vacancies)) {
-      return res.status(400).json({ message: "Vacancies list is required" });
-    }
-    const project = await prisma.project.findUnique({ where: { id } });
-    if (!project || project.userEmail !== userEmail) {
-      return res.status(403).json({ message: "Not allowed" });
-    }
-
-    await prisma.$transaction([
-      prisma.recruitmentVacancy.deleteMany({
-        where: { projectId: id }
-      }),
-      prisma.recruitmentVacancy.createMany({
-        data: vacancies.map((v) => ({
-          position: v.position,
-          count: parseInt(v.count),
-          basicSalary: parseFloat(v.basicSalary),
-          hraPercent: parseFloat(v.hraPercent),
-          projectId: id,
-        })),
-      }),
-      prisma.project.update({
-        where: { id },
-        data: { status: "RECRUITMENT_VACANCY" }
-      })
-    ]);
-
-    res.json({ success: true, message: "Recruitment details saved" });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.post("/add", async (req, res) => {
-  try {
-    const token = req.cookies.adKey
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: "No token",
-      })
-    }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    if (!decoded.id) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Admins only.",
-      })
-    }
-    const { userEmail, title, fundingAgency, projectDuration, hodEmail } = req.body
+    const { userEmail, title, fundingAgency, projectDuration, hodEmail } = req.body;
     if (!userEmail || !title || !fundingAgency || !projectDuration || !hodEmail) {
       return res.status(400).json({
         success: false,
-        message:
-          "userEmail, title, fundingAgency, projectDuration, and hodEmail are required",
-      })
-    }
-
-    const newProject = await prisma.project.create({
-      data: {
-        userEmail,
-        title,
-        fundingAgency,
-        projectDuration,
-        hodEmail,
-        adminEmail: decoded.email,
-        status: "SAVED",
-      },
-    })
-
-    return res.status(201).json({
-      success: true,
-      message: "Project added successfully",
-      project: newProject,
-    })
-  } catch (err) {
-    console.error("Project creation error:", err)
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    })
-  }
-})
-
-router.get("/:id/staffRecruitmentForm", verifyUser, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userEmail = req.user.email;
-
-    const project = await prisma.project.findUnique({
-      where: { id }
-    });
-
-    if (!project || project.userEmail !== userEmail) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-
-    const form = await prisma.staffRecruitmentForm.findFirst({
-      where: { projectId: id }
-    });
-
-    if (!form) {
-      return res.status(404).json({ message: "Form not submitted" });
-    }
-
-    let reason = "";
-
-    if (project.status === "REJECTED_HOD") {
-      reason = project.hodRemark || "";
-    } else if (project.status === "REJECTED_DEAN") {
-      reason = project.deanRemark || "";
-    }
-
-    return res.json({
-      selectionCommittee: form.selectionCommittee,
-      status: project.status,
-      reason
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.post("/:id/resubmit", verifyUser, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userEmail = req.user.email;
-
-    const project = await prisma.project.findUnique({
-      where: { id }
-    });
-
-    if (!project || project.userEmail !== userEmail) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-
-    if (project.status !== "REJECTED_HOD" && project.status !== "REJECTED_DEAN") {
-      return res.status(400).json({ message: "Project must be rejected to resubmit." });
-    }
-
-    // Determine target status. If rejected by Dean, resubmit goes back to pending_dean? Or back to pending_hod?
-    // "resubmit directly to PENDING_HOD"
-    await prisma.$transaction([
-      prisma.project.update({
-        where: { id },
-        data: { status: "PENDING_HOD" },
-      }),
-      prisma.staffRecruitmentForm.updateMany({
-        where: { projectId: id },
-        data: { status: "PENDING_HOD" },
-      }),
-      prisma.projectLog.create({
-        data: {
-          projectId: id,
-          action: "RESUBMITTED",
-          comment: "PI has resubmitted the project."
-        }
-      })
-    ]);
-
-    res.json({ success: true, message: "Project resubmitted successfully." });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.post("/restart", async (req, res) => {
-  const { projId } = req.body;
-
-  if (!projId) return res.status(400).json({ error: "Missing projId" });
-
-  try {
-    const form = await prisma.staffRecruitmentForm.findFirst({
-      where: { projectId: projId },
-    });
-
-    await prisma.project.update({
-      where: { id: projId },
-      data: {
-        status: "SAVED",
-        hodRemark: null,
-        deanRemark: null,
-        logs: {
-          create: {
-            action: "RESTARTED",
-            comment: "User restarted submission after rejection",
-          },
-        },
-      },
-    });
-
-    if (form) {
-      await prisma.staffRecruitmentForm.update({
-        where: { id: form.id },
-        data: {
-          status: "SAVED",
-          selectionCommittee: {},
-        },
+        message: "userEmail, title, fundingAgency, projectDuration, and hodEmail are required",
       });
     }
 
-    await prisma.decisionToken.deleteMany({
-      where: { projId },
-    });
+    const newProject = await ProjectService.createProject(req.admin.email, req.body);
+    return res.status(201).json({ success: true, message: "Project added", project: newProject });
+  } catch (err) {
+    console.error("Project creation error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
-    return res.json({ success: true });
-
+export const getProjectById = async (req, res) => {
+  try {
+    const project = await ProjectService.getProjectById(req.params.id, req.user.email);
+    if (!project) return res.status(403).json({ message: "Unauthorized or project not found" });
+    res.json({ success: true, project });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false });
+    res.status(500).json({ message: "Server error" });
   }
-});
+};
 
+export const createProjectRole = async (req, res) => {
+  try {
+    const { roleName } = req.body;
+    if (!roleName) return res.status(400).json({ message: "roleName required" });
 
-export default router;
+    const role = await ProjectService.createProjectRole(req.params.projectId, roleName);
+    res.json({ success: true, role });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const saveStaffRecruitmentForm = async (req, res) => {
+  try {
+    const { chair, members, submitImmediately } = req.body;
+    if (!chair || !Array.isArray(members)) {
+      return res.status(400).json({ message: "Chair and Members array required" });
+    }
+
+    const form = await ProjectService.saveStaffRecruitmentForm(req.params.roleId, { chair, members });
+
+    if (submitImmediately) {
+      await ApprovalService.startHodReview(form.approvalId);
+    }
+
+    res.json({
+      success: true,
+      message: submitImmediately ? "Submitted to HOD" : "Form saved as draft",
+      form,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+export const saveRecruitmentVacancy = async (req, res) => {
+  try {
+    const { position, count, basicSalary, hraPercent, adPdfUrl, submitImmediately } = req.body;
+    if (!position || !basicSalary || !hraPercent) {
+      return res.status(400).json({ message: "position, basicSalary, and hraPercent required" });
+    }
+
+    const vacancy = await ProjectService.saveRecruitmentVacancy(req.params.roleId, {
+      position,
+      count,
+      basicSalary,
+      hraPercent,
+      adPdfUrl,
+    });
+
+    if (submitImmediately) {
+      await ApprovalService.startHodReview(vacancy.approvalId);
+    }
+
+    res.json({
+      success: true,
+      message: submitImmediately ? "Submitted to HOD" : "Vacancy details saved",
+      vacancy,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+export const submitWorkflow = async (req, res) => {
+  try {
+    await ApprovalService.startHodReview(req.params.approvalId);
+    res.json({ success: true, message: "Successfully submitted for HOD review" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+export const restartWorkflow = async (req, res) => {
+  try {
+    await ApprovalService.restartWorkflow(req.params.approvalId);
+    res.json({
+      success: true,
+      message: "Workflow restarted successfully. You can now re-edit your submission.",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};

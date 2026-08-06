@@ -1,0 +1,98 @@
+iiti-rnd
+Γö£ΓöÇΓöÇ LICENSE
+Γö£ΓöÇΓöÇ README.md
+Γö£ΓöÇΓöÇ client
+Γöé   Γö£ΓöÇΓöÇ README.md
+Γöé   Γö£ΓöÇΓöÇ eslint.config.js
+Γöé   Γö£ΓöÇΓöÇ index.html
+Γöé   Γö£ΓöÇΓöÇ package-lock.json
+Γöé   Γö£ΓöÇΓöÇ package.json
+Γöé   Γö£ΓöÇΓöÇ postcss.config.js
+Γöé   Γö£ΓöÇΓöÇ src
+Γöé   Γöé   Γö£ΓöÇΓöÇ App.css
+Γöé   Γöé   Γö£ΓöÇΓöÇ App.tsx
+Γöé   Γöé   Γö£ΓöÇΓöÇ assets
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ iitilogo.png
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ loginpage.jpg
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ portal-bg.jpg
+Γöé   Γöé   Γö£ΓöÇΓöÇ components
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ Dashboard
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ ApprovalsSection.tsx
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ FormsSection.tsx
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ ProfileSection.tsx
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ ProjectList.tsx
+Γöé   Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ TabBar.tsx
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ Footer.tsx
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ Navbar.tsx
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ Project
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ CreateProject.tsx
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ RecruitmentVacancyForm.tsx
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ RoleWorkspace.tsx
+Γöé   Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ StaffRecruitment.tsx
+Γöé   Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ StaffRecruitmentForm
+Γöé   Γöé   Γöé   Γöé       Γö£ΓöÇΓöÇ StaffRecruitmentForm.tsx
+Γöé   Γöé   Γöé   Γöé       Γö£ΓöÇΓöÇ StageApproved.tsx
+Γöé   Γöé   Γöé   Γöé       Γö£ΓöÇΓöÇ StageForm.tsx
+Γöé   Γöé   Γöé   Γöé       Γö£ΓöÇΓöÇ StagePendingDean.tsx
+Γöé   Γöé   Γöé   Γöé       Γö£ΓöÇΓöÇ StagePendingHOD.tsx
+Γöé   Γöé   Γöé   Γöé       Γö£ΓöÇΓöÇ StageRejected.tsx
+Γöé   Γöé   Γöé   Γöé       ΓööΓöÇΓöÇ StageUploaded.tsx
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ ProtectedAdminRoute.tsx
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ ProtectedRoute.tsx
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ Workflow
+Γöé   Γöé   Γöé       ΓööΓöÇΓöÇ WorkflowStatusBanner.tsx
+Γöé   Γöé   Γö£ΓöÇΓöÇ index.css
+Γöé   Γöé   Γö£ΓöÇΓöÇ lib
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ api.ts
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ utils.ts
+Γöé   Γöé   Γö£ΓöÇΓöÇ main.tsx
+Γöé   Γöé   ΓööΓöÇΓöÇ pages
+Γöé   Γöé       Γö£ΓöÇΓöÇ AdminDeptHeadMails.tsx
+Γöé   Γöé       Γö£ΓöÇΓöÇ AdminPanel.tsx
+Γöé   Γöé       Γö£ΓöÇΓöÇ Dashboard.tsx
+Γöé   Γöé       Γö£ΓöÇΓöÇ Home.tsx
+Γöé   Γöé       Γö£ΓöÇΓöÇ Login.tsx
+Γöé   Γöé       ΓööΓöÇΓöÇ Project.tsx
+Γöé   Γö£ΓöÇΓöÇ tailwind.config.js
+Γöé   Γö£ΓöÇΓöÇ tsconfig.app.json
+Γöé   Γö£ΓöÇΓöÇ tsconfig.json
+Γöé   Γö£ΓöÇΓöÇ tsconfig.node.json
+Γöé   ΓööΓöÇΓöÇ vite.config.ts
+Γö£ΓöÇΓöÇ folder_structure.txt
+ΓööΓöÇΓöÇ server
+    Γö£ΓöÇΓöÇ addAdmins.js
+    Γö£ΓöÇΓöÇ controllers
+    Γöé   Γö£ΓöÇΓöÇ adminAuthController.js
+    Γöé   Γö£ΓöÇΓöÇ adminController.js
+    Γöé   Γö£ΓöÇΓöÇ authController.js
+    Γöé   Γö£ΓöÇΓöÇ mailController
+    Γöé   Γöé   Γö£ΓöÇΓöÇ html
+    Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ DeanNotificationEmail.js
+    Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ FinalDecisionEmail.js
+    Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ SubmitterUpdateEmail.js
+    Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ deanTemplates.js
+    Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ hodTemplates.js
+    Γöé   Γöé   ΓööΓöÇΓöÇ util.js
+    Γöé   ΓööΓöÇΓöÇ projectController.js
+    Γö£ΓöÇΓöÇ db
+    Γöé   ΓööΓöÇΓöÇ prisma.js
+    Γö£ΓöÇΓöÇ index.js
+    Γö£ΓöÇΓöÇ lib
+    Γöé   Γö£ΓöÇΓöÇ client.js
+    Γöé   ΓööΓöÇΓöÇ hodEmails.js
+    Γö£ΓöÇΓöÇ middlewares
+    Γöé   Γö£ΓöÇΓöÇ verifyAdmin.js
+    Γöé   ΓööΓöÇΓöÇ verifyUser.js
+    Γö£ΓöÇΓöÇ package-lock.json
+    Γö£ΓöÇΓöÇ package.json
+    Γö£ΓöÇΓöÇ prisma
+    Γöé   ΓööΓöÇΓöÇ schema.prisma
+    Γö£ΓöÇΓöÇ prisma.config.ts
+    Γö£ΓöÇΓöÇ routes
+    Γöé   Γö£ΓöÇΓöÇ auth.js
+    Γöé   Γö£ΓöÇΓöÇ index.js
+    Γöé   Γö£ΓöÇΓöÇ mail.js
+    Γöé   ΓööΓöÇΓöÇ project.js
+    ΓööΓöÇΓöÇ services
+        Γö£ΓöÇΓöÇ approvalService.js
+        ΓööΓöÇΓöÇ projectService.js

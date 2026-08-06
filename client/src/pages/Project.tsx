@@ -1,198 +1,161 @@
-import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import StaffRecruitmentForm from "../components/Project/StaffRecruitmentForm/StaffRecruitmentForm"
-import RecruitmentDetailsForm from "../components/Project/RecruitmentDetailsForm.tsx"
-import { apiLink } from "../lib/api"
-
-const tabs = [
-  { id: 1, title: "Staff Recruitment" },
-  { id: 2, title: "Recruitment Details" },
-  { id: 3, title: "Progress Report" },
-  { id: 4, title: "Completion" },
-]
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { FiArrowLeft, FiPlus, FiBriefcase } from "react-icons/fi";
+import { api } from "../lib/api"; // Adjust import path if needed
+import RoleWorkspace from "../components/Project/RoleWorkspace";
 
 export default function Project() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState(1)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeRoleId, setActiveRoleId] = useState<string | null>(null);
+  
+  // Role Creation State
+  const [newRoleName, setNewRoleName] = useState("");
+  const [addingRole, setAddingRole] = useState(false);
 
-  const [project, setProject] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const res = await fetch(`${apiLink}/api/project/${id}`, {
-          credentials: "include",
-        })
-
-        if (res.status === 403) {
-          navigate("/unauthorized")
-          return
+  const fetchProject = async () => {
+    try {
+      const res = await api.get(`/api/project/${id}`);
+      if (res.data?.success) {
+        setProject(res.data.project);
+        
+        // If we don't have an active role selected, but roles exist, auto-select the first one
+        if (!activeRoleId && res.data.project.roles?.length > 0) {
+          setActiveRoleId(res.data.project.roles[0].id);
         }
-
-        const data = await res.json()
-        setProject(data)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
       }
+    } catch (err) {
+      console.error("Failed to fetch project:", err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    fetchProject()
-  }, [id, navigate])
-
-  // 🔥 HARD NAVIGATION CONTROL
   useEffect(() => {
-    if (!project) return
+    fetchProject();
+  }, [id]);
 
-    if (project.status === "APPROVED") {
-      setActiveTab(2)
+  const handleAddRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName.trim()) return;
+    
+    setAddingRole(true);
+    try {
+      const res = await api.post(`/api/project/${id}/roles`, { roleName: newRoleName });
+      if (res.data?.success) {
+        setNewRoleName("");
+        await fetchProject(); // Refresh project data to get the new role
+        setActiveRoleId(res.data.role.id); // Auto-select the newly created role
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add role.");
+    } finally {
+      setAddingRole(false);
     }
+  };
 
-    if (project.status === "RECRUITMENT_VACANCY") {
-      setActiveTab(3)
-    }
+  if (loading) return <div className="p-10 text-center text-gray-500 font-medium">Loading project details...</div>;
+  if (!project) return <div className="p-10 text-center text-red-500 font-medium">Project not found or access denied.</div>;
 
-    if (
-      project.status !== "APPROVED" &&
-      project.status !== "RECRUITMENT_VACANCY"
-    ) {
-      setActiveTab(1)
-    }
-  }, [project])
-
-  if (loading) return <div className="text-center text-gray-500 mt-10">Loading...</div>
-  if (!project) return <div className="text-center text-red-500 mt-10">Project not found</div>
-
-  const isRejected =
-    project.status === "REJECTED_HOD" || project.status === "REJECTED_DEAN"
-
-  // 🔒 HARD CLICK CONTROL
-  const handleTabClick = (tabId: number) => {
-    if (!project) return
-
-    // Step 1 locked forever after approval
-    if (
-      tabId === 1 &&
-      (project.status === "APPROVED" || project.status === "RECRUITMENT_VACANCY")
-    ) return
-
-    // Step 2 locked before approval
-    if (tabId === 2 && project.status !== "APPROVED") return
-
-    // Step 2 locked after completion
-    if (tabId === 2 && project.status === "RECRUITMENT_VACANCY") return
-
-    // Step 3 only after step 2
-    if (tabId === 3 && project.status !== "RECRUITMENT_VACANCY") return
-
-    // Step 4 always locked (for now)
-    if (tabId === 4) return
-
-    setActiveTab(tabId)
-  }
+  const activeRole = project.roles?.find((r: any) => r.id === activeRoleId);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
+        {/* --- Header --- */}
+        <button 
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition font-medium"
+        >
+          <FiArrowLeft /> Back to Dashboard
+        </button>
 
-        {/* HEADER */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-800 mb-3">{project.title}</h1>
-
-          <div className="text-sm text-gray-600 flex flex-wrap gap-6">
-            <p><span className="font-semibold text-gray-700">Funding:</span> {project.fundingAgency || "N/A"}</p>
-            <p><span className="font-semibold text-gray-700">Duration:</span> {project.projectDuration || "N/A"}</p>
-
-            <p>
-              <span className="font-semibold text-gray-700">Status:</span>
-              <span className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                isRejected
-                  ? "bg-red-100 text-red-800 border-red-200"
-                  : project.status === "APPROVED" || project.status === "RECRUITMENT_VACANCY"
-                  ? "bg-green-100 text-green-800 border-green-200"
-                  : "bg-blue-100 text-blue-800 border-blue-200"
-              }`}>
-                {project.status?.replace(/_/g, " ")}
-              </span>
-            </p>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+          <h1 className="text-2xl font-bold text-gray-800">{project.title}</h1>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+            <div><span className="font-semibold text-gray-800">Funding Agency:</span> {project.fundingAgency}</div>
+            <div><span className="font-semibold text-gray-800">Duration:</span> {project.projectDuration}</div>
+            <div><span className="font-semibold text-gray-800">HOD Email:</span> {project.hodEmail}</div>
           </div>
         </div>
 
-        {/* TABS */}
-        <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
-          {tabs.map((tab, index) => {
+        {/* --- Roles Layout --- */}
+        <div className="flex flex-col md:flex-row gap-6">
+          
+          {/* Sidebar: Role List & Creation */}
+          <div className="w-full md:w-1/3 space-y-4">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <FiBriefcase /> Project Roles
+              </h2>
+              
+              <ul className="space-y-2 mb-6">
+                {project.roles?.length > 0 ? (
+                  project.roles.map((role: any) => (
+                    <li key={role.id}>
+                      <button
+                        onClick={() => setActiveRoleId(role.id)}
+                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition-all ${
+                          activeRoleId === role.id 
+                            ? "bg-blue-600 text-white shadow-md" 
+                            : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
+                        }`}
+                      >
+                        {role.roleName}
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No roles created yet.</p>
+                )}
+              </ul>
 
-            const isLocked =
-              (tab.id === 1 && (project.status === "APPROVED" || project.status === "RECRUITMENT_VACANCY")) ||
-              (tab.id === 2 && project.status !== "APPROVED") ||
-              (tab.id === 2 && project.status === "RECRUITMENT_VACANCY") ||
-              (tab.id === 3 && project.status !== "RECRUITMENT_VACANCY") ||
-              (tab.id === 4)
-
-            const isCompleted =
-              tab.id === 1 && (project.status === "APPROVED" || project.status === "RECRUITMENT_VACANCY")
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id)}
-                className={`flex-1 py-4 px-4 text-sm font-medium border-b-2 transition-all ${
-                  isLocked
-                    ? "text-gray-300 cursor-not-allowed"
-                    : activeTab === tab.id
-                    ? "text-blue-600 border-blue-600 bg-blue-50/50"
-                    : "text-gray-500 hover:text-blue-600 hover:bg-gray-50"
-                }`}
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <span className={`w-8 h-8 flex items-center justify-center text-sm font-bold rounded-full ${
-                    isCompleted
-                      ? "bg-green-500 text-white"
-                      : activeTab === tab.id
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-500 border"
-                  }`}>
-                    {isCompleted ? "✓" : index + 1}
-                  </span>
-
-                  <span className="hidden sm:inline">
-                    {tab.title}
-                    {isLocked && " 🔒"}
-                  </span>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* CONTENT */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[400px]">
-
-          {/* STEP 1 */}
-          {activeTab === 1 &&
-            project.status !== "APPROVED" &&
-            project.status !== "RECRUITMENT_VACANCY" && (
-              <StaffRecruitmentForm projectId={String(project.id)} />
-          )}
-
-          {/* STEP 2 */}
-          {activeTab === 2 && project.status === "APPROVED" && (
-            <RecruitmentDetailsForm projectId={String(project.id)} />
-          )}
-
-          {/* STEP 3 */}
-          {activeTab === 3 && project.status === "RECRUITMENT_VACANCY" && (
-            <div className="text-gray-500 text-center">
-              Next stage coming soon
+              {/* Add New Role Form */}
+              <form onSubmit={handleAddRole} className="pt-4 border-t border-gray-200 space-y-3">
+                <label className="block text-sm font-medium text-gray-700">Add New Role</label>
+                <input
+                  type="text"
+                  placeholder="e.g., JRF, SRF, RA"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  disabled={addingRole}
+                />
+                <button
+                  type="submit"
+                  disabled={addingRole || !newRoleName.trim()}
+                  className="w-full flex justify-center items-center gap-2 bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-900 font-semibold transition disabled:opacity-50"
+                >
+                  <FiPlus /> {addingRole ? "Adding..." : "Create Role"}
+                </button>
+              </form>
             </div>
-          )}
+          </div>
+
+          {/* Main Content: Role Workspace */}
+          <div className="w-full md:w-2/3">
+            {activeRole ? (
+              <RoleWorkspace role={activeRole} refreshProjectData={fetchProject} />
+            ) : (
+              <div className="bg-white p-10 rounded-2xl shadow-sm border border-gray-200 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-500 mb-4">
+                  <FiBriefcase size={32} />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">No Role Selected</h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  Select a role from the sidebar or create a new one to start managing staff recruitment and vacancy details.
+                </p>
+              </div>
+            )}
+          </div>
 
         </div>
-
       </div>
     </div>
-  )
+  );
 }
