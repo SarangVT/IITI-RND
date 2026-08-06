@@ -7,15 +7,22 @@ import { createHodApprovalEmailHtml } from "../controllers/mailController/html/h
 import { createDeanNotificationEmailHtml } from "../controllers/mailController/html/deanTemplates.js";
 import { createSubmitterUpdateEmail } from "../controllers/mailController/html/SubmitterUpdateEmail.js";
 
+import nodemailer from "nodemailer";
+
+const isProd = process.env.NODE_ENV === "PROD" || process.env.NODE_ENV === "production";
+
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+  port: isProd ? 465 : 587,
+  secure: isProd,
   auth: {
     user: process.env.RND_EMAIL,
     pass: process.env.RND_APP_PASSWD,
   },
+  ...(isProd && { family: 4 })
 });
+
+export default transporter;
 
 export const ApprovalService = {
   async createWorkflow(stepType) {
