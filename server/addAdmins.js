@@ -1,5 +1,6 @@
+import 'dotenv/config';
 import prisma from "./db/prisma.js";
-
+//node --env-file=server/.env server/addAdmins.js
 async function main() {
   const targetEmail = 'cse240001065@iiti.ac.in';
   const targetName = 'System Admin'; // You can change the name if needed
