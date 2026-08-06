@@ -59,7 +59,7 @@ router.get("/google/callback", async (req, res) => {
 
   const jwtToken = jwt.sign({ id: admin.id, email: admin.email, name: admin.name }, process.env.JWT_SECRET, { expiresIn: "7d" })
   const isProd = process.env.NODE_ENV === "PROD";
-  res.cookie("acKey", jwtToken, {
+  res.cookie("adKey", jwtToken, {
     httpOnly: true,
     secure: isProd,     
     sameSite: isProd ? "none" : "lax",
