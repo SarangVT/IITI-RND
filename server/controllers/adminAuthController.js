@@ -58,10 +58,11 @@ router.get("/google/callback", async (req, res) => {
   if (!admin) return res.status(403).send("You are not an admin")
 
   const jwtToken = jwt.sign({ id: admin.id, email: admin.email, name: admin.name }, process.env.JWT_SECRET, { expiresIn: "7d" })
-  res.cookie("adKey", jwtToken, {
+  const isProd = process.env.NODE_ENV === "PROD";
+  res.cookie("acKey", jwtToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,     
+    sameSite: isProd ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000
   })
 

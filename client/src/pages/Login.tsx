@@ -3,6 +3,7 @@ import iitiLogo from "../assets/iitilogo.png"
 import { apiLink } from "../lib/api"
 
 const Login = () => {
+  console.log("THE ACTUAL COMPILED API LINK IS:", apiLink);
   const handleUserLogin = () => {
     window.location.href = `${apiLink}/api/auth/google/redirect`
   }
