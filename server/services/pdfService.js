@@ -1,12 +1,10 @@
 import crypto from "crypto";
 import PDFDocument from "pdfkit";
 import path from "path";
-import { fileURLToPath } from "url"; // <--- ADD THIS
+import { fileURLToPath } from "url";
 
-// ES Module bulletproof path resolution
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Now we tell it exactly where the assets folder is relative to THIS specific file (services folder)
 const ASSETS_DIR = path.join(__dirname, "..", "assets"); 
 
 // Generates: IITI-RND-2026-A3F9B2
