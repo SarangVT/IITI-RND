@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import ProjectList from "../components/Dashboard/ProjectList";
-import Navbar from "../components/Navbar";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Projects");
@@ -8,20 +7,18 @@ export default function Dashboard() {
   const tabs = ["Projects", "Forms", "Analytics", "Settings"];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
-      
+    <div className="min-h-screen bg-gray-50 flex flex-col">      
       {/* Tab Bar */}
-      <div className="bg-white border-b shadow-sm flex justify-center px-4">
-        <div className="flex gap-2 sm:gap-8 w-full max-w-6xl overflow-x-auto no-scrollbar">
+      <div className="bg-white border-b shadow-sm flex justify-center px-4 sm:px-6">
+        <div className="flex w-full max-w-6xl overflow-x-auto no-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap px-6 py-4 text-center font-semibold transition-all duration-200 border-b-2 ${
+              className={`flex-1 whitespace-nowrap px-4 py-4 text-center font-bold text-base sm:text-lg transition-all duration-200 border-b-2 ${
                 activeTab === tab
-                  ? "text-blue-600 border-blue-600 bg-blue-50/50"
-                  : "text-gray-500 border-transparent hover:text-blue-600 hover:bg-gray-50"
+                  ? "text-blue-800 border-blue-800 bg-blue-50/50"
+                  : "text-gray-500 border-transparent hover:text-blue-800 hover:bg-gray-50"
               }`}
             >
               {tab}

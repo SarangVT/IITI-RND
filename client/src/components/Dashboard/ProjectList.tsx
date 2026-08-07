@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import { FiArrowUpRight, FiBriefcase } from "react-icons/fi";
@@ -28,7 +28,7 @@ export default function ProjectList() {
 
   return (
     <div className="p-6 mt-4">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Your Projects</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Research Projects</h2>
       <ul className="space-y-4">
         {projects.length > 0 ? (
           projects.map((proj: any) => (
@@ -43,7 +43,7 @@ export default function ProjectList() {
                 </p>
                 <div className="flex items-center gap-4 mt-2">
                   <span className="text-sm text-gray-500">
-                    <span className="font-medium text-gray-700">Agency:</span> {proj.fundingAgency}
+                    <span className="font-medium text-gray-700">Funding Agency:</span> {proj.fundingAgency}
                   </span>
                   <span className="flex items-center gap-1 text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                     <FiBriefcase size={14} /> 

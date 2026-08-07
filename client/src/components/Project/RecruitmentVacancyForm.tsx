@@ -15,7 +15,7 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
     count: initialData?.count?.toString() || '1',
     basicSalary: initialData?.basicSalary?.toString() || '',
     hra: initialData?.hraPercent?.toString() || '',
-    adPdfUrl: initialData?.adPdfUrl || '', // URL Link for the advertisement
+    adPdfUrl: initialData?.adPdfUrl || '',
   });
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
         basicSalary: parseFloat(formData.basicSalary),
         hraPercent: parseFloat(formData.hra),
         adPdfUrl: formData.adPdfUrl,
-        submitImmediately: true // Direct submit to HOD!
+        submitImmediately: true
       });
       alert("Submitted to HOD successfully!");
       onSaveSuccess();
@@ -61,7 +61,6 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
 
       <form onSubmit={handleSubmit} className="space-y-6">
         
-        {/* Row 1: Position & Count */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Position / Designation</label>
@@ -89,7 +88,6 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
           </div>
         </div>
 
-        {/* Row 2: Salary details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Basic Salary (Monthly)</label>
@@ -123,7 +121,6 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
           </div>
         </div>
 
-        {/* Dynamic CTC Calculator */}
         {formData.basicSalary && formData.hra && (
           <div className="bg-green-50 p-4 rounded-xl border border-green-200 flex items-center justify-between">
             <div>
@@ -135,7 +132,6 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
           </div>
         )}
 
-        {/* Row 3: Document Link */}
         <div className="border-t border-gray-100 pt-5">
           <label className="block text-sm font-semibold text-gray-700 mb-1">Advertisement Document Link</label>
           <p className="text-xs text-gray-500 mb-2">Provide a public link (e.g., Google Drive, Dropbox) to the detailed recruitment advertisement PDF.</p>
@@ -153,7 +149,6 @@ export default function RecruitmentVacancyForm({ roleId, initialData, onSaveSucc
           </div>
         </div>
 
-        {/* Submit Action */}
         <div className="pt-2">
           <button
             type="submit"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../../lib/api";
 
 interface Props {
@@ -20,7 +20,6 @@ const CreateProjectModal = ({ open, onClose, onSuccess }: Props) => {
 
   const hodRef = useRef<HTMLDivElement>(null);
 
-  // Fetch HOD emails for the autocomplete dropdown
   useEffect(() => {
     if (!open) return;
 

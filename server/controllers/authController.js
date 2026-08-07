@@ -2,10 +2,11 @@ import express from "express"
 import { OAuth2Client } from "google-auth-library"
 import jwt from "jsonwebtoken"
 import prisma from "../db/prisma.js"
-const router = express.Router()
 import { client as clientUrl, server } from "../lib/client.js"
 
+const router = express.Router()
 const redirectUri = `${server}/api/auth/google/callback`
+const isProd = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "PROD"
 
 router.get("/verify", (req, res) => {
   const token = req.cookies.acKey
@@ -19,11 +20,7 @@ router.get("/verify", (req, res) => {
 })
 
 router.get("/google/redirect", (req, res) => {
-    const scope = [
-    "openid",
-    "email",
-    "profile"
-  ].join(" ")
+  const scope = ["openid", "email", "profile"].join(" ")
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&prompt=select_account`
   res.redirect(url)
 })
@@ -56,7 +53,8 @@ router.get("/google/callback", async (req, res) => {
     const email = payload.email
 
     if (!email.endsWith("@iiti.ac.in")) return res.status(403).send("Use institute email only")
-      const now = new Date();
+
+    const now = new Date()
     const user = await prisma.user.upsert({
       where: { email },
       update: { name: payload.name || "Unnamed", lastVisit: now },
@@ -64,20 +62,29 @@ router.get("/google/callback", async (req, res) => {
     })
 
     const jwtToken = jwt.sign({ id: user.id, email: user.email, name: user.name }, process.env.JWT_SECRET, { expiresIn: "7d" })
-    const isProd = process.env.NODE_ENV === "PROD";
+
     res.cookie("acKey", jwtToken, {
       httpOnly: true,
       secure: isProd,     
       sameSite: isProd ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/" // MUST match clearCookie path
     })
     res.redirect(`${clientUrl}/dashboard`)
   } catch (err) {
-    console.error("OAuth callback error:", err.message)
-    console.error("Code:", err.code)
-    console.error("Meta:", JSON.stringify(err.meta))
+    console.error("OAuth callback error:", err)
     res.status(500).send("Auth failed")
   }
+})
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("acKey", {
+    httpOnly: true,
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
+    path: "/",
   })
+  return res.json({ success: true, message: "Logged out successfully" })
+})
 
 export default router

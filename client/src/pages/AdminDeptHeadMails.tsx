@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import Navbar from "../components/Navbar";
+import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { FiSave, FiX, FiTrash2, FiEdit2, FiPlus } from "react-icons/fi";
 
@@ -76,8 +75,6 @@ export default function AdminDeptHeadMails() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Department Head Directory</h1>
