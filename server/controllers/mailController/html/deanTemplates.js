@@ -1,9 +1,25 @@
 // deanHtmlTemplates.js
 
-export function createDeanNotificationEmailHtml(project, committee, acceptLink, rejectLink) {
+export function createDeanNotificationEmailHtml(project, committee, acceptLink, rejectLink, form = null, stepType = null) {
   const committeeMembers = Array.isArray(committee?.members) && committee.members.length 
     ? committee.members.join(", ") 
     : "N/A";
+
+  let vacancyDetailsHtml = "";
+  if (stepType === "RECRUITMENT_VACANCY" && form) {
+    const ctc = form.basicSalary + (form.basicSalary * (form.hraPercent / 100));
+    vacancyDetailsHtml = `
+      <div style="margin-bottom:28px; font-size:14.5px; line-height:1.9; color:#4b5563;">
+        <div style="margin-bottom:10px; font-size:15px; font-weight:600; color:#0d9488;">Vacancy & Financial Details</div>
+        <div style="margin-bottom:8px;"><span style="font-weight:600; color:#6b7280;">Position:</span> <span style="font-weight:600; color:#374151; margin-left:6px;">${form.position}</span></div>
+        <div style="margin-bottom:8px;"><span style="font-weight:600; color:#6b7280;">Number of Vacancies:</span> <span style="font-weight:600; color:#374151; margin-left:6px;">${form.count}</span></div>
+        <div style="margin-bottom:8px;"><span style="font-weight:600; color:#6b7280;">Basic Salary:</span> <span style="font-weight:600; color:#374151; margin-left:6px;">₹${form.basicSalary.toLocaleString()}</span></div>
+        <div style="margin-bottom:8px;"><span style="font-weight:600; color:#6b7280;">HRA:</span> <span style="font-weight:600; color:#374151; margin-left:6px;">${form.hraPercent}%</span></div>
+        <div style="margin-bottom:8px;"><span style="font-weight:600; color:#6b7280;">Total CTC/Month:</span> <span style="font-weight:600; color:#374151; margin-left:6px;">₹${ctc.toLocaleString()}</span></div>
+        ${form.adPdfUrl ? `<div><span style="font-weight:600; color:#6b7280;">Advertisement:</span> <a href="${form.adPdfUrl}" target="_blank" style="font-weight:600; color:#2563eb; text-decoration:none; margin-left:6px;">View PDF Link</a></div>` : ''}
+      </div>
+    `;
+  }
 
   return `
     <div style="font-family:Inter,Arial,sans-serif;margin:0;padding:0;background-color:#f8fafc;color:#374151;text-align:left;">
@@ -13,7 +29,7 @@ export function createDeanNotificationEmailHtml(project, committee, acceptLink, 
             <div style="max-width:640px;margin:0 auto;text-align:left;">
               <h2 style="margin:0 0 12px 0;font-size:24px;font-weight:700;color:#0f766e;">Final Approval Required</h2>
               <p style="margin:0 0 26px 0;font-size:15px;font-weight:500;color:#6b7280;">
-                This project step has been approved by the Head of Department and now requires your final decision.
+                This ${stepType.replace('_', ' ')} has been approved by the Head of Department and now requires your final decision.
               </p>
 
               <div style="margin-bottom:26px;font-size:14.5px;line-height:1.9;color:#4b5563;">
@@ -23,6 +39,8 @@ export function createDeanNotificationEmailHtml(project, committee, acceptLink, 
                 <div style="margin-bottom:8px;"><span style="font-weight:600;color:#6b7280;">Submitted By:</span><span style="font-weight:600;color:#374151;margin-left:6px;">${project.userEmail}</span></div>
                 <div><span style="font-weight:600;color:#6b7280;">HOD Email:</span><span style="font-weight:600;color:#374151;margin-left:6px;">${project.hodEmail}</span></div>
               </div>
+
+              ${vacancyDetailsHtml}
 
               <div style="margin-bottom:28px;font-size:14.5px;line-height:1.9;color:#4b5563;">
                 <div style="margin-bottom:10px;font-size:15px;font-weight:600;color:#0d9488;">Selection Committee</div>
@@ -34,8 +52,6 @@ export function createDeanNotificationEmailHtml(project, committee, acceptLink, 
                 <a href="${acceptLink}" style="display:inline-block;padding:11px 22px;font-size:14.5px;font-weight:600;color:#ffffff;background-color:#0d9488;border-radius:8px;text-decoration:none;margin-right:12px;">Final Approve</a>
                 <a href="${rejectLink}" style="display:inline-block;padding:11px 22px;font-size:14.5px;font-weight:600;color:#374151;background-color:#e5e7eb;border-radius:8px;text-decoration:none;">Request Changes</a>
               </div>
-
-              <p style="margin-top:34px;font-size:12.5px;color:#9ca3af;">This decision will be recorded as final in the system.</p>
             </div>
           </td>
         </tr>
@@ -109,6 +125,49 @@ export function createDeanSuccessPageHtml(title, message) {
           <p style="color:#6b7280;font-size:15px;">${message}</p>
         </div>
       </body>
+    </html>
+  `;
+}
+
+export function createDeanConfirmAcceptTailwind(token) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><script src="https://cdn.tailwindcss.com"></script></head>
+    <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+      <div class="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Confirm Final Approval</h2>
+        <p class="text-gray-600 mb-6">Are you sure you want to grant final approval for this project step?</p>
+        <form method="POST" action="/api/mail/dean/accept">
+          <input type="hidden" name="token" value="${token}" />
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition">
+            Grant Final Approval
+          </button>
+        </form>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export function createDeanRejectFormTailwind(token) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><script src="https://cdn.tailwindcss.com"></script></head>
+    <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+      <div class="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full border border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Request Changes (Dean)</h2>
+        <p class="text-gray-600 mb-6 text-sm">Please provide a reason. This will be sent back to the submitter.</p>
+        <form method="POST" action="/api/mail/dean/reject" class="space-y-4">
+          <input type="hidden" name="token" value="${token}" />
+          <textarea name="comment" required rows="4" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Type your feedback here..."></textarea>
+          <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl transition">
+            Submit Feedback
+          </button>
+        </form>
+      </div>
+    </body>
     </html>
   `;
 }

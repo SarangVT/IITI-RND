@@ -90,15 +90,16 @@ export const saveStaffRecruitmentForm = async (req, res) => {
 export const saveRecruitmentVacancy = async (req, res) => {
   try {
     const { position, count, basicSalary, hraPercent, adPdfUrl, submitImmediately } = req.body;
-    if (!position || !basicSalary || !hraPercent) {
+    
+    if (!position || basicSalary === undefined || hraPercent === undefined) {
       return res.status(400).json({ message: "position, basicSalary, and hraPercent required" });
     }
 
     const vacancy = await ProjectService.saveRecruitmentVacancy(req.params.roleId, {
       position,
       count,
-      basicSalary,
-      hraPercent,
+      basicSalary: parseFloat(basicSalary),
+      hraPercent: parseFloat(hraPercent),
       adPdfUrl,
     });
 
@@ -106,11 +107,7 @@ export const saveRecruitmentVacancy = async (req, res) => {
       await ApprovalService.startHodReview(vacancy.approvalId);
     }
 
-    res.json({
-      success: true,
-      message: submitImmediately ? "Submitted to HOD" : "Vacancy details saved",
-      vacancy,
-    });
+    res.json({ success: true, message: submitImmediately ? "Submitted to HOD" : "Vacancy details saved", vacancy });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message || "Server error" });

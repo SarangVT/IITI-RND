@@ -1,53 +1,18 @@
 import prisma from "../db/prisma.js";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import { server } from "../lib/client.js";
+
+import { dispatchEmail } from "./mailService.js";
+import { generateLetterId, generateVacancyPdfBase64 } from "./pdfService.js";
 
 import { createHodApprovalEmailHtml } from "../controllers/mailController/html/hodTemplates.js";
 import { createDeanNotificationEmailHtml } from "../controllers/mailController/html/deanTemplates.js";
 import { createSubmitterUpdateEmail } from "../controllers/mailController/html/SubmitterUpdateEmail.js";
 
-const isProd = process.env.NODE_ENV === "PROD";
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.RND_EMAIL,
-    pass: process.env.RND_APP_PASSWD,
-  },
-});
-
-async function dispatchEmail(to, subject, html) {
-  if (isProd) {
-    if (!process.env.GOOGLE_MAIL_WEBHOOK) {
-      throw new Error("Missing GOOGLE_MAIL_WEBHOOK in Render environment variables");
-    }
-    const response = await fetch(process.env.GOOGLE_MAIL_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, subject, html }),
-    });
-    const result = await response.json();
-    if (!result.success) throw new Error("Google Webhook Failed: " + result.error);
-  } else {
-    await transporter.sendMail({
-      from: `"Rnd Department" <${process.env.RND_EMAIL}>`,
-      to,
-      subject,
-      html,
-    });
-  }
-}
-
 export const ApprovalService = {
   async createWorkflow(stepType) {
     return await prisma.approvalWorkflow.create({
-      data: {
-        stepType,
-        status: "PENDING",
-      },
+      data: { stepType, status: "PENDING" },
     });
   },
 
@@ -56,7 +21,16 @@ export const ApprovalService = {
       where: { id: approvalId },
       include: {
         staffForm: { include: { projectRole: { include: { project: true } } } },
-        vacancyForm: { include: { projectRole: { include: { project: true } } } },
+        vacancyForm: { 
+          include: { 
+            projectRole: { 
+              include: { 
+                project: true,
+                staffRecruitmentForm: true
+              } 
+            } 
+          } 
+        },
       },
     });
 
@@ -82,25 +56,20 @@ export const ApprovalService = {
 
   async startHodReview(approvalId) {
     const context = await this.getContext(approvalId);
-    if (!context || !context.project?.hodEmail) {
-      throw new Error("Invalid workflow context or missing HOD email");
-    }
+    if (!context || !context.project?.hodEmail) throw new Error("Invalid context");
 
     const acceptToken = await this.createToken(approvalId, "ACCEPT");
     const rejectToken = await this.createToken(approvalId, "REJECT");
-
     const acceptLink = `${server}/api/mail/hod/decision?token=${acceptToken}`;
     const rejectLink = `${server}/api/mail/hod/decision?token=${rejectToken}`;
-    const committee = context.isStaff ? context.form.selectionCommittee || {} : {};
-
+    const committee = context.isStaff ? context.form.selectionCommittee : context.role.staffRecruitmentForm?.selectionCommittee || {};
     try {
       await dispatchEmail(
         context.project.hodEmail,
         `Approval Required [${context.workflow.stepType}]: ${context.project.title}`,
-        createHodApprovalEmailHtml(context.project, committee, acceptLink, rejectLink)
+        createHodApprovalEmailHtml(context.project, committee, acceptLink, rejectLink, context.form, context.workflow.stepType)
       );
-    } catch (mailError) {
-      console.error("Mail Dispatch Failed:", mailError);
+    } catch (err) {
       throw new Error("Failed to send email to HOD. Submission aborted.");
     }
 
@@ -110,38 +79,23 @@ export const ApprovalService = {
     });
 
     await prisma.projectLog.create({
-      data: {
-        projectId: context.project.id,
-        projectRoleId: context.role.id,
-        approvalWorkflowId: approvalId,
-        action: "SUBMITTED_HOD",
-        comment: `Submitted ${context.workflow.stepType} for HOD review.`,
-      },
+      data: { projectId: context.project.id, projectRoleId: context.role.id, approvalWorkflowId: approvalId, action: "SUBMITTED_HOD", comment: `Submitted for HOD review.` },
     });
-
     return { success: true };
   },
 
   async processHodDecision(approvalId, action, comment = null) {
     const context = await this.getContext(approvalId);
-    if (!context) throw new Error("Workflow context not found");
-
+    if (context.workflow.status !== "PENDING_HOD") {
+      throw new Error("DECISION_ALREADY_MADE");
+    }
+    await prisma.decisionToken.deleteMany({ where: { projId: approvalId } });
     if (action === "REJECT") {
       await prisma.approvalWorkflow.update({
         where: { id: approvalId },
         data: { status: "REJECTED_HOD", hodRemark: comment, hodActedAt: new Date() },
       });
-
-      await prisma.projectLog.create({
-        data: { projectId: context.project.id, projectRoleId: context.role.id, approvalWorkflowId: approvalId, action: "REJECTED_HOD", comment },
-      });
-
-      await dispatchEmail(
-        context.project.userEmail,
-        `Changes Requested by HOD: ${context.project.title}`,
-        createSubmitterUpdateEmail(context.project, "REJECTED", comment)
-      );
-
+      await dispatchEmail(context.project.userEmail, `Changes Requested: ${context.project.title}`, createSubmitterUpdateEmail(context.project, "REJECTED", comment));
       return { success: true, status: "REJECTED_HOD" };
     }
 
@@ -150,37 +104,59 @@ export const ApprovalService = {
         where: { id: approvalId },
         data: { status: "PENDING_DEAN", hodActedAt: new Date() },
       });
-
-      await prisma.projectLog.create({
-        data: { projectId: context.project.id, projectRoleId: context.role.id, approvalWorkflowId: approvalId, action: "CONFIRMED_HOD", comment: "HOD Approved." },
-      });
-
       const acceptToken = await this.createToken(approvalId, "ACCEPT");
       const rejectToken = await this.createToken(approvalId, "REJECT");
       const acceptLink = `${server}/api/mail/dean/decision?token=${acceptToken}`;
       const rejectLink = `${server}/api/mail/dean/decision?token=${rejectToken}`;
-      const committee = context.isStaff ? context.form.selectionCommittee || {} : {};
+      const committee = context.isStaff ? context.form.selectionCommittee : context.role.staffRecruitmentForm?.selectionCommittee || {};
 
       await dispatchEmail(
         process.env.DEAN_EMAIL,
         `Final Approval Required: ${context.project.title}`,
-        createDeanNotificationEmailHtml(context.project, committee, acceptLink, rejectLink)
+        createDeanNotificationEmailHtml(context.project, committee, acceptLink, rejectLink, context.form, context.workflow.stepType)
       );
-
       return { success: true, status: "PENDING_DEAN" };
     }
   },
 
   async processDeanDecision(approvalId, action, comment = null) {
     const context = await this.getContext(approvalId);
-    if (!context) throw new Error("Workflow context not found");
+    if (context.workflow.status !== "PENDING_DEAN") {
+      throw new Error("DECISION_ALREADY_MADE"); 
+    }
+    await prisma.decisionToken.deleteMany({ where: { projId: approvalId } });
+    let status = action === "ACCEPT" ? "APPROVED" : "REJECTED_DEAN";
+    let remarkField = action === "REJECT" ? { deanRemark: comment } : {};
+    
+    // --- NEW LOGIC: ID & PDF GENERATION ---
+    let letterId = null;
+    let issuedTime = null;
+    let pdfAttachment = null;
 
-    const status = action === "ACCEPT" ? "APPROVED" : "REJECTED_DEAN";
-    const remarkField = action === "REJECT" ? { deanRemark: comment } : {};
+    if (action === "ACCEPT" && context.workflow.stepType === "RECRUITMENT_VACANCY") {
+      letterId = generateLetterId();
+      issuedTime = new Date();
+      
+      // Generate the PDF string in memory
+      const base64Pdf = await generateVacancyPdfBase64(context, letterId);
+      
+      pdfAttachment = {
+        name: `Approval_Letter_${letterId}.pdf`,
+        base64: base64Pdf,
+        mimeType: "application/pdf"
+      };
+    }
 
+    // Update DB (includes the new letter ID fields)
     await prisma.approvalWorkflow.update({
       where: { id: approvalId },
-      data: { status, deanActedAt: new Date(), ...remarkField },
+      data: { 
+        status, 
+        deanActedAt: new Date(), 
+        ...remarkField,
+        issuedLetterId: letterId,
+        letterIssuedAt: issuedTime
+      },
     });
 
     await prisma.projectLog.create({
@@ -190,7 +166,8 @@ export const ApprovalService = {
     await dispatchEmail(
       context.project.userEmail,
       `Project Step ${action === "ACCEPT" ? "Approved" : "Rejected"}: ${context.project.title}`,
-      createSubmitterUpdateEmail(context.project, status, comment)
+      createSubmitterUpdateEmail(context.project, status, comment),
+      pdfAttachment // <--- ATTACHES TO EMAIL
     );
 
     return { success: true, status };
@@ -198,19 +175,11 @@ export const ApprovalService = {
 
   async restartWorkflow(approvalId) {
     const context = await this.getContext(approvalId);
-    if (!context) throw new Error("Workflow not found");
-
     await prisma.approvalWorkflow.update({
       where: { id: approvalId },
       data: { status: "PENDING", hodRemark: null, deanRemark: null },
     });
-
     await prisma.decisionToken.deleteMany({ where: { projId: approvalId } });
-
-    await prisma.projectLog.create({
-      data: { projectId: context.project.id, projectRoleId: context.role.id, approvalWorkflowId: approvalId, action: "RESTARTED", comment: "PI restarted submission after rejection." },
-    });
-
     return { success: true };
-  },
+  }
 };

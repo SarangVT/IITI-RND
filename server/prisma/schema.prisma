@@ -16,7 +16,8 @@ model ApprovalWorkflow {
   deanActedAt   DateTime?  
   // What type of form is this attached to? (Useful for routing emails/UI)
   stepType      String         // e.g., "STAFF_RECRUITMENT", "RECRUITMENT_VACANCY"
-  // Reverse relations to the forms that might own this workflow
+  issuedLetterId  String?   @unique 
+  letterIssuedAt  DateTime?
   staffForm     StaffRecruitmentForm?
   vacancyForm   RecruitmentVacancy?
   // Logs specific to this specific approval chain
