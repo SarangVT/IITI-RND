@@ -1,6 +1,13 @@
 import crypto from "crypto";
 import PDFDocument from "pdfkit";
 import path from "path";
+import { fileURLToPath } from "url"; // <--- ADD THIS
+
+// ES Module bulletproof path resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Now we tell it exactly where the assets folder is relative to THIS specific file (services folder)
+const ASSETS_DIR = path.join(__dirname, "..", "assets"); 
 
 // Generates: IITI-RND-2026-A3F9B2
 export function generateLetterId() {
@@ -25,16 +32,13 @@ export async function generateVacancyPdfBase64(context, letterId) {
       // 1. HEADER, LOGO, & ADDRESS
       // =========================================================
       
-      // Grabs the logo from your assets folder
-      doc.image(path.join(process.cwd(), 'assets', 'iiti-logo.png'), doc.page.width / 2 - 40, 40, { width: 80 });
+      // USE THE NEW BULLETPROOF PATH
+      doc.image(path.join(ASSETS_DIR, 'iiti-logo.png'), doc.page.width / 2 - 40, 40, { width: 80 });
       
-      doc.moveDown(6); // Push text down to clear the logo
-
+      doc.moveDown(6); 
       doc.fillColor('#000000'); 
       doc.fontSize(18).font('Helvetica-Bold').text("INDIAN INSTITUTE OF TECHNOLOGY INDORE", { align: "center" });
       doc.fontSize(12).font('Helvetica').text("Research & Development Department", { align: "center" });
-      
-      // NEW: Added the official address right below the department name
       doc.fontSize(10).font('Helvetica').text("Khandwa Road, Simrol, Indore 453552, INDIA", { align: "center" });
       doc.moveDown(2);
 
@@ -79,8 +83,8 @@ export async function generateVacancyPdfBase64(context, letterId) {
       const signatureX = doc.page.width - 250; 
       const currentY = doc.y;
 
-      // Injects the Dean's signature exactly above the line
-      doc.image(path.join(process.cwd(), 'assets', 'dean-sign.png'), signatureX + 60, currentY, { width: 100 });
+      // USE THE NEW BULLETPROOF PATH
+      doc.image(path.join(ASSETS_DIR, 'dean-sign.png'), signatureX + 60, currentY, { width: 100 });
       
       doc.moveDown(3.5);
       doc.fontSize(12).font('Helvetica-Bold').text("_________________________", { align: "right" });
@@ -88,12 +92,12 @@ export async function generateVacancyPdfBase64(context, letterId) {
       doc.text("IIT Indore", { align: "right" });
 
       const stampY = doc.y + 10;
-      // Drops the official stamp exactly below the Dean's title
-      doc.image(path.join(process.cwd(), 'assets', 'rnd-stamp.png'), signatureX + 70, stampY, { width: 80 });
+      // USE THE NEW BULLETPROOF PATH
+      doc.image(path.join(ASSETS_DIR, 'rnd-stamp.png'), signatureX + 70, stampY, { width: 80 });
 
-      // Finish the PDF
       doc.end();
     } catch (error) {
+      console.error("PDF GENERATION ERROR: ", error); // This will print in your Render logs!
       reject(error);
     }
   });
